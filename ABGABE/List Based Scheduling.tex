@@ -1,0 +1,224 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{List Based Scheduling in High Level Synthesis\\
+{\footnotesize A study on List Based Scheduling algorithm for application in high level synthesis}
+}
+
+\author{\IEEEauthorblockN{Emirkan Sali}
+\IEEEauthorblockA{\textit{Electronic Engineering Student} \\
+\textit{University of Applied Sciences Hamm-Lippstadt}\\
+Lippstadt, Germany \\
+emirkan.sali@stud.hshl.de}
+}
+
+\maketitle
+
+\begin{abstract}
+In Hardware/Software Codesign, developers and engineers desire to design systems more efficiently when needed. Utilizing High Level Synthesis is a way for Designers of a system to create Hardware description language for their system in a fast and less expensive way using high level coding. This tool converts the operations of a  high level function automatically into a Control data flow graph and Schedules the operations according to the set constraints, as well as allocates needed elements and memory and finally connects every element together to create accurate Hardware description language. List based Scheduling in High-Level Synthesis is a Heuristic algorithm to properly schedule operations in a Control Data flow Graph with respect to Design and resource constraints.
+\end{abstract}
+
+\begin{IEEEkeywords}
+High-Level, Synthesis, Codesign, Scheduling, Heuristic, List-Based, Design, Constraints
+\end{IEEEkeywords}
+
+\section{Introduction}
+In today's development cycles of Systems for any area of application there is never a system that works out perfectly after the software and hardware design is completed and the system is up for testing. Often times, engineers and designers find some mistakes in the hardware or software later or some problems become only clear when seeing test results of systems in later stages of development. Often times, this means that the system has to be redesigned again, which can be tedious and time consuming. Usually when designing systems, the hardware components needed for the system are specified first and then building on that, the software is being developed to meet the systems functional and non-functional requirements\cite{HandbookHWSWCodesign}. A typical design flow for a traditional system is shown in figure \ref{fig:OldSystemDesignFlow} taken from \cite{HandbookHWSWCodesign}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.4]{ImagesHWSWCodesign/TypicalDesignFlowSystem.jpg}
+    \caption{Visualization of a typical design flow of an electronic system taken from \cite{HandbookHWSWCodesign}}
+    \label{fig:OldSystemDesignFlow}
+\end{figure}
+
+In this type of Design flow, designing hardware and software components is done separately, while the software design needs the basis of the hardware to start development\cite{HandbookHWSWCodesign}. To avoid this time consuming process, Hardware/Software Codesign (HW/SW Codesign) methods are introduced, where both hardware and software are developed at the same time using algorithms and synthesis tools\cite{HandbookHWSWCodesign}. Especially High-level Synthesis (HLS) is a crucial part of HW/SW Codesign, because it processes inputs from a High level language like C or C++ into a low level Hardware description language (HDL)\cite{ModernControlArchitectures}. The behavior of the system is described using the high level language and an automated tool converts it into a register transfer level (RTL) description\cite{ModernControlArchitectures}. A visualization of the HLS process can be seen in figure \ref{fig:HLSDesignFLow} from \cite{ModernControlArchitectures}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.5]{ImagesHWSWCodesign/HLS application(RefModernControlArch.jpg}
+    \caption{Visualization of the design flow of an electronic system using High-level Synthesis taken from \cite{ModernControlArchitectures}}
+    \label{fig:HLSDesignFLow}
+\end{figure}
+
+This paper addresses the flow of HLS with some examples and sections about each of its steps. The main focus is the scheduling part of HLS with further focus on the list-based scheduling algorithm and the comparison to other scheduling algorithms in its domain.
+
+\section{High Level Synthesis}
+
+The general procedure of using HLS can be described by 4 sub-tasks\cite{EfficientListBased}:
+\begin{enumerate}
+    \item Behavior description of the system using a hardware description language like VHDL and Representing the description in a graph-based way called control data flow graph (CDFG) which can be a control flow graph (CFG) and data flow graph (DFG)\cite{ElectronicDesignAutomation}\cite{EfficientListBased}
+    \item Scheduling, in which every operation in CDFG receives a control step (c-step), i.e a clock cycle signalising its execution\cite{EfficientListBased}
+    \item allocating the desired number of components, connections etc. for the scheduled system while considering restraints.\cite{EfficientListBased}
+    \item Finalizing task "binding", in which operations are assigned to functional units, values to all storage elements and production of an data path by interconnecting all components with each other\cite{EfficientListBased}\\
+\end{enumerate}
+
+\subsection{Elaboration}
+
+A behaviour description could be any function that takes variables as inputs and returns an output based on computations done in that function\cite{ElectronicDesignAutomation}. The computations in these functions are being visualized in a CDFG like in the following Example:
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.25]{ImagesHWSWCodesign/Conversion example.jpg}
+    \caption{A simple computation that could be in a function written in high level code visualized in a DFG}
+    \label{fig:DFGConversionExample}
+\end{figure}
+
+In figure \ref{fig:DFGConversionExample} for example, we have a simple computation, where variables $a, b, c, d$ and $e$ are added together or multiplied. Through the process of HLS, this computation is visualized in the Data flow graph in figure \ref{fig:DFGConversionExample}. HLS needs this DFG for scheduling the operations later on.\\
+
+A simplified example for a behavioural Description could be an function to convert the hue-saturation-light format for color determination into the more common red-green-blue format shown in the following C-code example from \cite{ElectronicDesignAutomation} in figure \ref{fig:CcodeRGB} :
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.35]{ImagesHWSWCodesign/CCodeExample.jpg}
+    \caption{An example C-Code from \cite{ElectronicDesignAutomation} to convert the hue-saturation-light format into the red-green-blue format}
+    \label{fig:CcodeRGB}
+\end{figure}
+
+This code alone is not enough for HLS, because it does not include any design constraints\cite{ElectronicDesignAutomation}. This can be specified when the designer knows for example, that this function computes the needed pixel color of a screen and a new pixel needs to be produced every 10 nanoseconds with a clock cycle of 5 nanoseconds\cite{ElectronicDesignAutomation}. that would mean that the system has a required throughput rate of 100 MHz and the latency can not be higher than two cycles per pixel computation\cite{ElectronicDesignAutomation}. Constraints like these can be added in two different ways:
+
+\begin{enumerate}
+    \item Latency annotations specifically made understandable for the HLS tool\cite{ElectronicDesignAutomation}
+    \item Adding timing statements in the code like  $wait()$ for SystemC\cite{ElectronicDesignAutomation}
+\end{enumerate}
+
+These Input specifications are coded in SystemC by creating a class first to specify the clock and the other needed variables shown in figure \ref{fig:SystemCClass} from \cite{ElectronicDesignAutomation}:
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.30]{ImagesHWSWCodesign/SystemCCLASS.jpg}
+    \caption{Class input specification from \cite{ElectronicDesignAutomation} for the HSL tool for the function in figure \ref{fig:CcodeRGB}}
+    \label{fig:SystemCClass}
+\end{figure}
+
+The function from figure \ref{fig:CcodeRGB} is rewritten to include the input specifications and design constraints in figure \ref{fig:SystemCCode} from \cite{ElectronicDesignAutomation}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.30]{ImagesHWSWCodesign/SystemCCode.jpg}
+    \caption{Function of figure \ref{fig:CcodeRGB} rewritten in a way that includes design constraints and design specifications}
+    \label{fig:SystemCCode}
+\end{figure}
+
+This entire process is part of the Elaboration step of HLS in which the High level code is then processed into a CDFG like in figure \ref{fig:DFGConversionExample}\cite{ElectronicDesignAutomation}.
+
+\subsection{Optimization and Micro-architecture transformations}
+
+Optimization of the produced CDFG is necessary, because in-optimized CFG's or DFG's can lead to extra hardware being utilized in the output generation\cite{ElectronicDesignAutomation}. Extra hardware always means a higher cost and is therefore a problem to avoid to be able to compete in the hardware market\cite{ElectronicDesignAutomation}. Methods for optimization are common compiler optimizations like dead code elimination or common sub-expression extraction and more, but also methods specific for hardware like bit-trimming\cite{ElectronicDesignAutomation}.\\
+
+Architectural choices for the outputted HDL also need to be made by designers of the system\cite{ElectronicDesignAutomation}. Generally they fall into two types of categories\cite{ElectronicDesignAutomation}:
+\begin{enumerate}
+    \item Restructuring control or design hierarchy, where choices for handling loops and functions are made\cite{ElectronicDesignAutomation}
+    \item Specifying memory architecture, where decisions about how to store the data in the computations are made\cite{ElectronicDesignAutomation}
+\end{enumerate}
+
+\subsection{Scheduling}
+
+Scheduling in HLS is done with the sequencing graphs of the previous steps and its given constraints\cite{SynthesisAndOptimization}. It precisely determines the start of each task in the sequencing graph and is therefore impacting performance of the HLS\cite{SynthesisAndOptimization}. Scheduling is taking into account all ressources, constraints and operations and assigning the resources to the needed computations\cite{ElectronicDesignAutomation}.It is also making clear how these computational pieces are associated with all the states on the thread\cite{ElectronicDesignAutomation}. Here, a chosen scheduling algorithm assigns control steps to operations based on design constraints.\cite{HandbookHWSWCodesign} They can be divided into two types of algorithms:
+\begin{enumerate}
+    \item Exact algorithms
+    \item Heuristic algorithms\\
+    
+\end{enumerate}
+
+Because of the high execution time problem of Exact algorithms, even though they provide optimal schedules, many algorithm based on heuristics have been developed. In these heuristic algorithms the optimal control steps for operations are selected on a local basis without considering past decisions or any predictions towards future selections\cite{HandbookHWSWCodesign}. This may be producing not an optimal solution when looked at globally, but the produced output is given in a short time period while being sufficiently near to the optimal solution\cite{HandbookHWSWCodesign}. Some examples of heuristic algorithms are:
+\begin{itemize}
+    \item As Soon As Possible (ASAP) algorithm\cite{HandbookHWSWCodesign}
+    \item As Late As Possible (ALAP) algorithm\cite{HandbookHWSWCodesign}
+    \item Force-Directed Scheduling (FDS) algorithm\cite{HandbookHWSWCodesign}
+    \item List Scheduling algorithm\cite{HandbookHWSWCodesign}
+\end{itemize}
+
+In an scheduling algorithm, to describe the behaviour of the algorithm and the scheduled sequencing graph, the following notations are introduced according to \cite{SynthesisAndOptimization}:
+\begin{itemize}
+    \item Vertex set $V$ that describes all inputs, signals in a sequencing graph
+    \item Vertices in set $V$ = [$v_i; i=0,1,....n$]
+    \item set of operations and edge set $E$ = [$(v_i;v_j); i,j = 0,1,....n$]
+    \item source vertex $v_0$ and the sink $v_n$, with both being no operation vertices
+    \item Operation delays $D$ = [$d_i; i = 0,1,....n$]
+    \item Start time for operations $T$ = [$t_i; i = 0,1,....n$]
+    \item latency of the system being $\gamma = t_n - t_0$
+    \item the number of resources available for operations $a_i = [1,2,....n]$ with $i$ being the type of ressource
+\end{itemize}
+
+\section{List-Based Scheduling}
+List-based scheduling is a  heuristic type of scheduling algorithm for HLS that solves ressource constraint problems and is ultimately "an extension of Hu's algorithm to handling multiple operation types and multiple-cycle execution delays"\cite{EfficientListBased}\cite{SynthesisAndOptimization}.\\
+
+A ressource constraint problem specifies that the algorithm needs to find the fastest schedule that satisfies given constraints with a maximum number of ressources that cannot be exceeded in the process\cite{FormalApproach}. Ressources in this case are the function units required for the system\cite{FormalApproach}. The Algorithm can be denoted in code form from \cite{SynthesisAndOptimization} in figure \ref{fig:ListSchedulingCODE}:
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.50]{ImagesHWSWCodesign/CodeListScheduling.jpg}
+    \caption{Code for List Scheduling from \cite{SynthesisAndOptimization}}
+    \label{fig:ListSchedulingCODE}
+\end{figure}
+
+The algorithms that are list-based work according to the selection steps, where a priority list of all operations is used to assign the right control step to each operation\cite{SynthesisAndOptimization}. Commonly, vertices of a priority list are labeled with a weight that represents their longest path to the sink and ranked in a decreasing order\cite{SynthesisAndOptimization}. As a consequence, the most urgent operations are scheduled to be the first ones to be executed\cite{SynthesisAndOptimization}. This list is modified by giving each operation a deadline based on timing constraints\cite{SynthesisAndOptimization}.
+
+In a self-made example inspired by the example in \cite{SynthesisAndOptimization} we consider the control data flow graph in figure \ref{fig:CDFGExampleOWN} to be scheduled with list scheduling.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.20]{ImagesHWSWCodesign/OwnExampleGraph.jpg}
+    \caption{An self-made example CDFG from  \cite{SynthesisAndOptimization}}
+    \label{fig:CDFGExampleOWN}
+\end{figure}
+
+As resource constraints we have $a_1$ = 2 multipliers and $a_2$ = 1 arithmetic logic unit (ALU) with delays being $d_1$ = 2 for the multipliers and $d_2$ = 1 for the ALU. Given these constraints, one can make a List schedule following the priority based on weighting principle\cite{SynthesisAndOptimization}. For the given example a simple list schedule is visualized in figure \ref{fig:ScheduledExampleOWN}:
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.20]{ImagesHWSWCodesign/OwnPriorityList.jpg}
+    \caption{list schedule of the CDFG in figure \ref{fig:CDFGExampleOWN}}
+    \label{fig:PrioritylistOWN}
+\end{figure}
+
+In this list schedule, we can see that the 2 available multipliers assign the vertices $v_6$ and $v_8$ to be scheduled in the first time slot. Those two vertices are part of the longest path to the sink and are therefore, based on the weighting principle, the most urgent multiply operations in the given example. The ALU is scheduled to execute the operation in $v_3$, because there is no other ALU operation available at that point in time.\\
+
+After $v_6$ and $v_8$ are finished, the remaining 2 multiply vertices $v_1$ and $v_4$ are assigned to the available multipliers at time = $3$. Beyond that, the remaining ALU operations are completed and the list schedule is generated.\\
+
+Applying the schedule to the graph in figure \ref{fig:CDFGExampleOWN}, we obtain the scheduled graph in figure \ref{fig:ScheduledExampleOWN}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[scale = 0.20]{ImagesHWSWCodesign/ScheduledGraphOwn.jpg}
+    \caption{graph from figure \ref{fig:CDFGExampleOWN} scheduled with list based scheduling}
+    \label{fig:ScheduledExampleOWN}
+\end{figure}
+
+\subsection{Hu's Algorithm}
+For a quick comparison, Hu's algorithm is suited. Hu’s algorithm attempts to solve the ressource-constrained minimum latency problem. It is the basis of the List-based scheduling approach, but has a different, more greedy scheduling strategy. For each control step, it schedules as many operations as possible for the operations, whose predecessors have been scheduled already. Specifically, vertices with the largest labels are the ones picked first by the algorithm to schedule\cite{SynthesisAndOptimization}.
+
+\subsection{ASAP and ALAP algorithm}
+Another notable set of algorithms are the As Soon As Possible (ASAP) algorithm and As Late As Possible Algorithm(ALAP).\\
+
+ASAP is an unconstrained algorithm that simply schedules in the following way: "The start time for each operation is the least one allowed by the dependencies"\cite{SynthesisAndOptimization}.\\
+
+ALAP is a lateny constrained algorithm and it seeks the longest path bettween one operation and the sink\cite{SynthesisAndOptimization}. 
+
+\section{Conclusion}
+High level synthesis is a powerful tool for engineers and designers in order to translate the behaviour they want a system to have from high level code into a HDL or to assist engineers in creating a changed system after developing a failed prototype without high cost or time.\\
+
+List based scheduling is a simple but efficient algorithm in HLS scheduling, that schedules any sequence graph with respect to design constraints. It may not find the absolute optimum solution for a schedule unlike other algorithms, but it offers a less time consuming and cost effective scheduling process instead while still creating a sufficient schedule for most cases.
+
+\bibliographystyle{IEEEtran}
+\bibliography{LBSchedulingReferences}
+
+\subsection*{Statement of authorship}
+Hereby, I declare that I have composed the presented paper independently on my own and without any other resources than the ones indicated. All thoughts taken directly or indirectly from external sources are properly denoted as such.
+
+  \vspace{3\baselineskip}
+  
+  Lippstadt, \today \hspace{0.25\linewidth}\parbox{0.3\linewidth}{\dotfill}
+
+\end{document}
